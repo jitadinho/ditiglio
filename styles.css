@@ -46,7 +46,7 @@ input:focus,select:focus { border-color:var(--gold); box-shadow:0 0 0 3px rgba(1
 .notice { margin:0; color:#73562e; font-size:11px; line-height:1.55; }
 .off-banner { margin:9px 0 0; padding:13px 15px; border-radius:7px; color:#795f38; background:#eee3d0; font-size:10px; font-weight:700; }
 footer { display:flex; align-items:center; justify-content:space-between; gap:30px; padding:28px clamp(20px,6vw,88px); color:#c8ccc8; background:#111813; font-size:10px; }
-footer img { width:120px; height:58px; object-fit:contain; padding:5px; border-radius:6px; background:#f7f3ea; }
+footer img { width:120px; height:58px; object-fit:contain; padding:5px; border-radius:6px; }
 .center-page { min-height:100vh; display:grid; place-items:center; padding:25px; background:var(--cream); }
 .message-card { max-width:620px; padding:45px; border:1px solid var(--line); border-radius:14px; background:#fff; text-align:center; }.message-card img { width:210px; }.message-card h1 { font-size:52px; }.message-card>p:last-child { color:var(--muted); line-height:1.7; }
 .auth-page { min-height:100vh; display:grid; place-items:center; padding:clamp(22px,5vw,72px); background:radial-gradient(circle at 78% 18%,rgba(177,133,67,.16),transparent 30%),#111813; }
