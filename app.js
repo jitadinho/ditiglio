@@ -29,7 +29,7 @@
     return `<header class="site-header"><a href="#inicio"><img src="logo-ditiglio.png" alt="Di Tiglio Barber Club"></a><nav><a href="#agendar">Agendar horário</a><a class="outline-button" href="#barbeiro">Sou barbeiro</a></nav></header>
       <section class="hero"><div class="hero-copy"><p class="eyebrow">Sua melhor versão começa aqui</p><h1>Seu estilo.<br><em>Seu horário.</em></h1><p>Escolha seu barbeiro, encontre o melhor horário e confirme seu atendimento.</p><a class="primary-button" href="#agendar">Agendar agora <span>→</span></a></div><div class="hero-art"><img src="logo-ditiglio.png" alt="Di Tiglio Barber Club"><div class="open-card"><span>● Agenda aberta</span><strong>Escolha seu horário</strong><small>Confirmação em poucos segundos</small></div></div></section>
       <section class="booking-section" id="agendar"><div class="section-heading"><div><p class="eyebrow">Agendamento online</p><h2>Reserve seu momento</h2></div><p>Folgas e horários ocupados são bloqueados automaticamente.</p></div><div id="booking-root" class="booking-shell"><div class="booking-panel">Carregando profissionais…</div></div></section>
-      <footer><img src="logo-ditiglio.png" alt="Di Tiglio"><p>Agendamento simples. Atendimento impecável.</p></footer>`;
+      <footer><img src="Di-Tiglio-Barber-Club-logo-branca-transparente.png" alt="Di Tiglio"><p>Agendamento simples. Atendimento impecável.</p></footer>`;
   }
 
   async function renderHome() {
@@ -95,7 +95,7 @@
     app.innerHTML = '<main class="center-page">Carregando sua agenda…</main>';
     const { data } = await api.from('user_roles').select('role').eq('user_id', session.user.id).single();
     const admin = data && data.role === 'admin';
-    app.innerHTML = `<main class="portal-page"><header class="portal-header"><a href="#inicio"><img src="logo-ditiglio.png" alt="Di Tiglio"><span>${admin ? 'PAINEL DO DONO' : 'PORTAL DO BARBEIRO'}</span></a><div><span>${escapeHtml(session.user.email)}</span><button id="logout">Sair</button></div></header><div id="portal-root" class="portal-content">Carregando…</div></main>`;
+    app.innerHTML = `<main class="portal-page"><header class="portal-header"><a href="#inicio"><img src="Di-Tiglio-Barber-Club-logo-branca-transparente.png" alt="Di Tiglio"><span>${admin ? 'PAINEL ADMINISTRATIVO' : 'PORTAL DO BARBEIRO'}</span></a><div><span>${escapeHtml(session.user.email)}</span><button id="logout">Sair</button></div></header><div id="portal-root" class="portal-content">Carregando…</div></main>`;
     document.getElementById('logout').addEventListener('click', () => api.auth.signOut());
     if (admin) await renderAdmin(); else await renderBarber();
   }
