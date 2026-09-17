@@ -63,6 +63,25 @@
     if (el) el.addEventListener(evt, fn);
   };
 
+  // Navega pelo hash; se já estamos nele, redesenha na mão (hashchange não dispara).
+  const goTo = hash => { if (location.hash === hash) render(); else location.hash = hash; };
+
+  const destinationForRole = () =>
+    (state.role === 'barber' || state.role === 'admin') ? '#barbeiro' : '#conta';
+
+  // Traduz os erros crus do Supabase para algo que o cliente entenda.
+  function authError(message) {
+    const m = String(message || '');
+    if (/email not confirmed/i.test(m))
+      return 'Falta confirmar seu e-mail. Procure a mensagem de confirmação na caixa de entrada ou no spam.';
+    if (/invalid login credentials/i.test(m)) return 'E-mail ou senha inválidos.';
+    if (/user already registered|already been registered/i.test(m))
+      return 'Esse e-mail já tem cadastro. Use a aba Entrar.';
+    if (/rate limit|too many/i.test(m)) return 'Muitas tentativas seguidas. Espere um minuto e tente de novo.';
+    if (/failed to fetch|networkerror/i.test(m)) return 'Não conseguimos falar com o servidor. Verifique sua conexão.';
+    return m || 'Não foi possível concluir. Tente de novo.';
+  }
+
   /* -------------------------------------------------------------- estado -- */
 
   const state = {
@@ -92,15 +111,20 @@
   }
 
   async function loadIdentity() {
-    state.role = null; state.customer = null;
+    state.role = null; state.customer = null; state.identityError = null;
     if (!state.session) return;
     const uid = state.session.user.id;
-    const [r, c] = await Promise.all([
-      api.from('user_roles').select('role').eq('user_id', uid).maybeSingle(),
-      api.from('customers').select('*').eq('id', uid).maybeSingle()
-    ]);
-    state.role = r.data ? r.data.role : null;
-    state.customer = c.data || null;
+    try {
+      const [r, c] = await Promise.all([
+        api.from('user_roles').select('role').eq('user_id', uid).maybeSingle(),
+        api.from('customers').select('*').eq('id', uid).maybeSingle()
+      ]);
+      state.identityError = (r.error || c.error) ? (r.error || c.error).message : null;
+      state.role = r.data ? r.data.role : null;
+      state.customer = c.data || null;
+    } catch (e) {
+      state.identityError = String(e && e.message ? e.message : e);
+    }
   }
 
   /* ================================================== layout público ====== */
@@ -492,10 +516,20 @@
       button.disabled = true;
 
       if (mode === 'login') {
-        const { error } = await api.auth.signInWithPassword({
-          email: v.get('email'), password: v.get('password')
+        notice('auth-notice', 'Entrando…');
+        const { data, error } = await api.auth.signInWithPassword({
+          email: String(v.get('email')).trim(), password: v.get('password')
         });
-        if (error) { notice('auth-notice', 'E-mail ou senha inválidos.', 'error'); button.disabled = false; }
+        if (error) { notice('auth-notice', authError(error.message), 'error'); button.disabled = false; return; }
+
+        // Não esperamos o onAuthStateChange: resolvemos o destino aqui mesmo.
+        state.session = data.session;
+        await loadIdentity();
+        if (!state.customer && state.role !== 'barber' && state.role !== 'admin') {
+          notice('auth-notice',
+            'Entrou, mas não encontramos seu perfil. Vamos abrir sua conta para completar o cadastro.', 'ok');
+        }
+        goTo(destinationForRole());
         return;
       }
 
@@ -510,13 +544,22 @@
             birth_date: v.get('birth_date'), whatsapp_opt_in: v.get('whatsapp_opt_in') === 'on'
           };
 
-      const { error } = await api.auth.signUp({
-        email: v.get('email'), password: v.get('password'),
+      notice('auth-notice', 'Criando seu cadastro…');
+      const { data, error } = await api.auth.signUp({
+        email: String(v.get('email')).trim(), password: v.get('password'),
         options: { emailRedirectTo: `${location.origin}${location.pathname}`, data: meta }
       });
-      notice('auth-notice',
-        error ? error.message : 'Cadastro criado. Confirme o e-mail que acabamos de enviar e depois entre.',
-        error ? 'error' : 'ok');
+
+      if (error) { notice('auth-notice', authError(error.message), 'error'); button.disabled = false; return; }
+
+      // Se a confirmação de e-mail estiver desligada no Supabase, já vem sessão.
+      if (data.session) {
+        state.session = data.session;
+        await loadIdentity();
+        goTo(destinationForRole());
+        return;
+      }
+      notice('auth-notice', 'Cadastro criado. Confirme o e-mail que acabamos de enviar e depois entre por aqui.', 'ok');
       button.disabled = false;
     });
   }
@@ -528,9 +571,16 @@
     if (!state.customer) {
       if (state.role === 'barber' || state.role === 'admin') { location.hash = '#barbeiro'; return; }
       app.innerHTML = shell(`<main class="center-page"><section class="message-card">
-        <h1>Cadastro incompleto</h1>
-        <p>Não encontramos seu perfil de cliente. Confirme seu e-mail e entre novamente.</p>
-        <button class="link-button" id="logout-x">Sair</button></section></main>`, 'conta');
+        <img src="logo-ditiglio.png" alt="Di Tiglio">
+        <h1>Perfil não encontrado</h1>
+        <p>Você entrou como <b>${esc(state.session.user.email)}</b>, mas não existe um cadastro de cliente ligado a esta conta.
+        Isso acontece quando a conta foi criada antes da última atualização do sistema.</p>
+        ${state.identityError ? `<p class="notice error" style="margin-top:12px">Detalhe técnico: ${esc(state.identityError)}</p>` : ''}
+        <p style="margin-top:18px">
+          <button class="ghost-button" id="retry-x">Tentar de novo</button>
+          <button class="ghost-button" id="logout-x">Sair e criar um novo cadastro</button>
+        </p></section></main>`, 'conta');
+      bind('retry-x', 'click', async () => { await loadIdentity(); render(); });
       bind('logout-x', 'click', () => api.auth.signOut());
       return;
     }
@@ -1101,7 +1151,7 @@
     if (r === 'planos') return renderPlans();
     if (r === 'conta') return renderAccount();
     if (r === 'entrar') {
-      if (state.customer) { location.hash = '#conta'; return; }
+      if (state.session) { goTo(destinationForRole()); return; }
       return renderAuth('login', 'customer');
     }
     await renderHome();
@@ -1119,11 +1169,17 @@
     render();
   });
 
-  api.auth.onAuthStateChange(async (event, next) => {
+  // IMPORTANTE: o supabase-js segura um lock interno enquanto executa este
+  // callback. Chamar api.from(...) ou api.auth(...) aqui dentro trava o cliente
+  // para sempre. Por isso todo o trabalho sai do callback com setTimeout(0).
+  api.auth.onAuthStateChange((event, next) => {
     state.session = next;
-    await loadIdentity();
-    if (event === 'SIGNED_OUT') { location.hash = '#inicio'; }
-    render();
+    setTimeout(async () => {
+      await loadIdentity();
+      if (event === 'SIGNED_OUT') { location.hash = '#inicio'; return; }
+      if (event === 'SIGNED_IN' && route() === 'entrar') { goTo(destinationForRole()); return; }
+      render();
+    }, 0);
   });
 
   if ('serviceWorker' in navigator) {
