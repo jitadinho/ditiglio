@@ -1,0 +1,15 @@
+{
+  "name": "Di Tiglio Barber Club",
+  "short_name": "Di Tiglio",
+  "description": "Agendamento online da Di Tiglio Barber Club.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#080a0e",
+  "lang": "pt-BR",
+  "icons": [
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
